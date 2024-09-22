@@ -1,22 +1,24 @@
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, Float, ForeignKey, Date
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.exc import IntegrityError
 from getpass import getpass
 from datetime import date
 
-# Database setup
+###########################################################################################################################################################################
+############################################################## MY DATABASE SETUP ########################################################################################
 Base = declarative_base()
 engine = create_engine('sqlite:///hotel_reservation.db')
 Session = sessionmaker(bind=engine)
 session = Session()
 
-# Models
+#############################################################  MODELS  ################################################################################################
 class Customer(Base):
     __tablename__ = 'customers'
     id = Column(Integer, primary_key=True)
     first_name = Column(String, nullable=False)
     last_name = Column(String, nullable=False)
-    phone_number = Column(String, nullable=False)
+    phone_number = Column(String, nullable=False,unique=True)
     email = Column(String, nullable=False, unique=True)
     password = Column(String, nullable=False)
 
@@ -25,6 +27,7 @@ class Manager(Base):
     id = Column(Integer, primary_key=True)
     first_name = Column(String, nullable=False)
     last_name = Column(String, nullable=False)
+    phone_number = Column(String, nullable=False,unique=True)
     email = Column(String, nullable=False, unique=True)
     password = Column(String, nullable=False)
 
@@ -49,7 +52,8 @@ class Reservation(Base):
 
 Base.metadata.create_all(engine)
 
-# Helper functions
+##########################################################################################################################################################################
+############################################################### MY HELPER FUNCTIONS #######################################################################################
 def get_non_empty_input(prompt):
     while True:
         user_input = input(prompt)
@@ -64,15 +68,25 @@ def get_non_empty_password(prompt):
             return password
         print("Password cannot be empty.")
 
+def get_phone_number(prompt):
+    while True:
+        phone_number=get_non_empty_input(prompt)
+        if phone_number.isdigit() and len(phone_number)==10:
+            return phone_number
+        print("Invalid phone number it must be exactly 10 digits")
+
+######this function prompts the hotel manager to create an account when the program runs and there are no managers in my database .
+#firstly i query into the db to check if there are any managers if there are zero number of managers i create a manger 
 def create_super_manager():
     if session.query(Manager).count() == 0:
         print("\n--- Super Manager Creation ---")
         first_name = get_non_empty_input("Enter Super Manager's first name: ")
         last_name = get_non_empty_input("Enter Super Manager's last name: ")
+        phone = get_phone_number("Enter your phone number it must be 10 digits: ")
         email = get_non_empty_input("Enter Super Manager's email: ")
         password = get_non_empty_password("Enter Super Manager's password: ")
 
-        super_manager = Manager(first_name=first_name, last_name=last_name, email=email, password=password)
+        super_manager = Manager(first_name=first_name, last_name=last_name,phone_number=phone,email=email, password=password)
         session.add(super_manager)
         session.commit()
         print("Super Manager created successfully!")
@@ -82,21 +96,27 @@ def customer_registration():
     print("\n--- Customer Registration ---")
     first_name = get_non_empty_input("Enter your first name: ")
     last_name = get_non_empty_input("Enter your last name: ")
-    phone = get_non_empty_input("Enter your phone number: ")
+    phone = get_phone_number("Enter your phone number it must be 10 digits: ")
     email = get_non_empty_input("Enter your email: ")
     password = get_non_empty_password("Create a password: ")
 
     new_customer = Customer(first_name=first_name, last_name=last_name, phone_number=phone, email=email, password=password)
-    session.add(new_customer)
-    session.commit()
-    print("Customer registration successful!")
+    try:
+        session.add(new_customer)
+        session.commit()
+        print("Customer registration successful!")
+    except:
+        session.rollback()
+        print("A customer with this phone number or email already exists. Please try again with different details.")
+    
+    
 
 def customer_login():
     print("\n--- Customer Login ---")
-    email = get_non_empty_input("Enter your email: ")
+    phone_number=get_phone_number("Enter your phone number:")
     password = get_non_empty_password("Enter your password: ")
 
-    customer = session.query(Customer).filter_by(email=email, password=password).first()
+    customer = session.query(Customer).filter_by(phone_number=phone_number, password=password).first()
     if customer:
         print(f"Welcome, {customer.first_name}!")
         return customer
@@ -108,20 +128,42 @@ def manager_registration():
     print("\n--- Manager Registration ---")
     first_name = get_non_empty_input("Enter your first name: ")
     last_name = get_non_empty_input("Enter your last name: ")
+    phone = get_phone_number("Enter your phone number it must be 10 digits: ")
     email = get_non_empty_input("Enter your email: ")
     password = get_non_empty_password("Create a password: ")
 
-    new_manager = Manager(first_name=first_name, last_name=last_name, email=email, password=password)
-    session.add(new_manager)
-    session.commit()
-    print("Manager registration successful!")
+    new_manager = Manager(first_name=first_name, last_name=last_name,phone_number=phone, email=email, password=password)
+    try:
+        session.add(new_manager)
+        session.commit()
+        print("Manager registration successful!")
+    except:
+        session.rollback()
+        print("A manager with this phone number or email already exists. Please try again with different details.")
+
+def add_manager():
+    print("\n--- Manager Registration ---")
+    first_name = get_non_empty_input("Enter Manager first name: ")
+    last_name = get_non_empty_input("Enter Manager last name: ")
+    phone = get_phone_number("Enter Manager phone number it must be 10 digits: ")
+    email = get_non_empty_input("Enter Manager email: ")
+    password = get_non_empty_password("Create a password: ")
+
+    new_manager = Manager(first_name=first_name, last_name=last_name,phone_number=phone, email=email, password=password)
+    try:
+        session.add(new_manager)
+        session.commit()
+        print("Manager registration successful!")
+    except:
+        session.rollback()
+        print("A manager with this phone number or email already exists. Please try again with different details.")
 
 def manager_login():
     print("\n--- Manager Login ---")
-    email = get_non_empty_input("Enter your email: ")
+    phone_number=get_phone_number("Enter your phone number:")
     password = get_non_empty_password("Enter your password: ")
 
-    manager = session.query(Manager).filter_by(email=email, password=password).first()
+    manager = session.query(Manager).filter_by(phone_number=phone_number, password=password).first()
     if manager:
         print(f"Welcome, {manager.first_name}!")
         return manager
@@ -147,7 +189,7 @@ def view_all_rooms():
     else:
         for room in rooms:
             status = "Available" if room.is_available else "Booked"
-            print(f"Room {room.room_number} - {room.room_type} - ${room.price_per_night}/night - {status}")
+            print(f"Room {room.room_number} - {room.room_type} - KSH.{room.price_per_night}/night - {status}")
 
 def view_available_rooms():
     print("\n--- Available Rooms ---")
@@ -156,7 +198,7 @@ def view_available_rooms():
         print("No rooms are available at the moment.")
     else:
         for room in available_rooms:
-            print(f"Room {room.room_number} - {room.room_type} - ${room.price_per_night}/night")
+            print(f"Room {room.room_number} - {room.room_type} - KSH.{room.price_per_night}/night")
     return available_rooms
 
 def view_all_reservations():
@@ -167,8 +209,49 @@ def view_all_reservations():
         for res in reservations:
             customer = session.query(Customer).filter_by(id=res.customer_id).first()
             room = session.query(Room).filter_by(id=res.room_id).first()
-            print(f"Reservation for {customer.first_name} {customer.last_name}: Room {room.room_number}, "
-                  f"Check-in: {res.check_in_date}, Check-out: {res.check_out_date}, Total Price: ${res.total_price:.2f}")
+            print(f"Reservation id: {res.id} :Reservation for {customer.first_name} {customer.last_name}: Room {room.room_number}, "
+                  f"Check-in: {res.check_in_date}, Check-out: {res.check_out_date}, Total Price: KSH.{res.total_price:.2f}")
+
+def cancel_reservation():
+    view_all_reservations()
+    reservation_id=input("Enter the reservation ID to cancel: ")
+    reservation=session.query(Reservation).filter_by(id=reservation_id).first()
+    if not reservation:
+        print("Reservation not found.")
+        return
+    room = session.query(Room).filter_by(id=reservation.room_id).first()
+    
+    if room:
+        room.is_available = True
+    
+    session.delete(reservation)
+    session.commit()
+    
+    print(f"Reservation ID:{reservation_id} has been canceled and room {room.room_number} is now available.")
+    
+def view_all_customers():
+    customers=session.query(Customer).all()
+    
+    if not customers:
+        print("No customers found")
+    
+    else:
+        print("\n -- OUR CUSTOMERS --")
+        for customer in customers:
+            print(f"ID: {customer.id} - {customer.first_name} {customer.last_name} - Phone: {customer.phone_number} - Email: {customer.email}")
+            
+def delete_customer():
+    view_all_customers()
+    customer_id=input("Enter the customer Id to delete : ")
+    customer=session.query(Customer).filter_by(id=customer_id).first()
+    
+    if not customer:
+        print("Customer not found.")
+        return
+    
+    session.delete(customer)
+    session.commit()
+        
 
 def book_room(customer):
     available_rooms = view_available_rooms()
@@ -208,7 +291,7 @@ def book_room(customer):
     session.commit()
 
     print(f"Room {room_number} successfully booked!")
-    print(f"Total price: ${total_price:.2f}")
+    print(f"Total price: KSH.{total_price:.2f}")
 
 def make_reservation_for_customer():
     print("\n--- Make Reservation for Customer ---")
@@ -266,7 +349,7 @@ def make_reservation_for_customer():
     session.commit()
 
     print(f"Room {room_number} has been successfully booked for {customer.first_name} {customer.last_name}!")
-    print(f"Total price: ${total_price:.2f}")
+    print(f"Total price: KSH.{total_price:.2f}")
 
 def manager_menu(manager):
     while True:
@@ -275,7 +358,10 @@ def manager_menu(manager):
         print("2. View All Rooms")
         print("3. View All Reservations")
         print("4. Create Reservation for Customer")
-        print("5. Logout")
+        print("5. Add Manager")
+        print("6. Cancel Reservation")
+        print("7. Delete Customer")
+        print("8. Logout")
 
         choice = input("Enter your choice: ")
 
@@ -287,20 +373,28 @@ def manager_menu(manager):
             view_all_reservations()
         elif choice == "4":
             make_reservation_for_customer()
-        elif choice == "5":
+        elif choice=="5":
+            add_manager()
+        elif choice=="6":
+            cancel_reservation()
+        elif choice=="7":
+            delete_customer()
+        elif choice == "8":
             print("Logging out...")
             break
         else:
             print("Invalid choice. Please try again.")
 
 def main():
-    create_super_manager()  # Create super manager if none exists
+    #i would like when the program runs for the first time it checks whether there is a manager in the db,if there is no manager ,we are prompted to create a manager
+    create_super_manager()  
 
     while True:
         print("\n--- Hotel Reservation System ---")
         print("1. Customer Login")
-        print("2. Manager Login")
-        print("3. Exit")
+        print("2. Customer sign up")
+        print("3. Manager Login")
+        print("4. Exit")
 
         choice = input("Enter your choice: ")
 
@@ -323,11 +417,13 @@ def main():
                         break
                     else:
                         print("Invalid choice. Please try again.")
-        elif choice == "2":
+        elif choice=="2":
+            customer_registration()
+        elif choice == "3":
             manager = manager_login()
             if manager:
                 manager_menu(manager)
-        elif choice == "3":
+        elif choice == "4":
             print("Exiting system. Goodbye!")
             break
         else:
