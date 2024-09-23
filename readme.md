@@ -47,4 +47,7 @@ The project will involve building a command-line interface (CLI) hotel reservati
 
 4. **running the program**
     - To run the program in the terminal type `python program.py` while still you are in the virtual environment
+
+
+
    https://github.com/user-attachments/assets/bb6af83a-923d-4935-97b8-cf5d794463b6
